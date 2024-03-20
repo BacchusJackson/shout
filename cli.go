@@ -88,13 +88,12 @@ func writeMessage(w io.Writer, level string, msg string) {
 func sendAlert(webhookURL string, content []byte) error {
 	var bodyReader io.Reader
 
-	slog.Info("sending request to webhook", "url", webhookURL, "body", content)
+	slog.Info("send request to webhook", "url", webhookURL, "body", string(content))
 	if len(content) != 0 {
 		bodyReader = bytes.NewReader(content)
 	}
 
 	res, err := http.Post(webhookURL, "application/json", bodyReader)
-
 	if err != nil {
 		slog.Error("alert failed", "response_status", res.Status)
 		return err
