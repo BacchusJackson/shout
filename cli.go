@@ -1,14 +1,21 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net/http"
 	"runtime"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
+
+var errFailure = errors.New("command failure")
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -51,7 +58,15 @@ func NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(versionCmd, logCmd, warnCmd, errorCmd)
+	alertCmd := &cobra.Command{
+		Use:   "alert [WEBHOOK URL] key1=value1 key2=value2",
+		Short: "send an alert to a JSON webhook",
+		RunE:  runAlert,
+	}
+
+	alertCmd.Flags().StringP("seperator", "s", "=", "A custom seperator to use to split arguments")
+
+	cmd.AddCommand(versionCmd, logCmd, warnCmd, errorCmd, alertCmd)
 
 	return cmd
 }
@@ -68,6 +83,57 @@ func writeMessage(w io.Writer, level string, msg string) {
 
 	}
 	_, _ = fmt.Fprintf(w, "[%s] %s\n", c.Sprint(level), msg)
+}
+
+func sendAlert(webhookURL string, content []byte) error {
+	var bodyReader io.Reader
+
+	slog.Info("sending request to webhook", "url", webhookURL, "body", content)
+	if len(content) != 0 {
+		bodyReader = bytes.NewReader(content)
+	}
+
+	res, err := http.Post(webhookURL, "application/json", bodyReader)
+
+	if err != nil {
+		slog.Error("alert failed", "response_status", res.Status)
+		return err
+	}
+	return nil
+}
+
+func runAlert(cmd *cobra.Command, args []string) error {
+	sep, _ := cmd.Flags().GetString("seperator")
+
+	if len(args) == 0 {
+		slog.Error("no webhook url specified.")
+		return errFailure
+	}
+
+	webhookURL := args[0]
+	if len(args) == 1 {
+		return sendAlert(webhookURL, nil)
+	}
+
+	argMap := make(map[string]string)
+
+	for _, a := range args[1:] {
+		parts := strings.Split(a, sep)
+		if len(parts) != 2 {
+			slog.Error("invalid format", "argument", a)
+			return errFailure
+		}
+
+		argMap[parts[0]] = parts[1]
+	}
+
+	jsonContent, err := json.Marshal(argMap)
+	if err != nil {
+		slog.Error("cannot create JSON from arguments", "error", err)
+		return err
+	}
+
+	return sendAlert(webhookURL, jsonContent)
 }
 
 func runVersion(cmd *cobra.Command, _ []string) {
