@@ -1,4 +1,6 @@
-# Shout!: A CI/CD Logging and Alerts Utility
+# Shout
+
+![Shout Splash Logo](https://static.caffeineforcode.com/shout-logo-splash-dark.png)
 
 ## Description
 
