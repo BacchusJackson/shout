@@ -19,10 +19,11 @@ var errFailure = errors.New("command failure")
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "shout",
-		Short:        "A CI/CD Logging and Alerts Utility",
-		Example:      "",
-		SilenceUsage: true,
+		Use:           "shout",
+		Short:         "A CI/CD Logging and Alerts Utility",
+		Example:       "",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	versionCmd := &cobra.Command{
@@ -87,17 +88,25 @@ func writeMessage(w io.Writer, level string, msg string) {
 
 func sendAlert(webhookURL string, content []byte) error {
 	var bodyReader io.Reader
-
-	slog.Info("send request to webhook", "url", webhookURL, "body", string(content))
+	body := "N/A"
+	if content != nil {
+		body = string(content)
+	}
+	slog.Info("send request to webhook", "url", webhookURL, "body", body)
 	if len(content) != 0 {
 		bodyReader = bytes.NewReader(content)
 	}
 
 	res, err := http.Post(webhookURL, "application/json", bodyReader)
 	if err != nil {
-		slog.Error("alert failed", "response_status", res.Status)
+		slog.Error(err.Error())
 		return err
 	}
+	if res.StatusCode != http.StatusOK {
+		slog.Error("non 200 response", "status", res.Status)
+		return errFailure
+	}
+	slog.Info(res.Status)
 	return nil
 }
 

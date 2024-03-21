@@ -28,6 +28,8 @@ Ensure you have Go installed on your system to compile the application.
 
 Shout is designed with simplicity in mind, providing a straightforward CLI interface for all its features. Here are some examples of how to use Shout:
 
+![demo](https://static.caffeineforcode.com/shout-demo.gif)
+
 ### Logging Information, Warnings, and Errors
 
 Log an information message:
